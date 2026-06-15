@@ -15,8 +15,11 @@ export default async function PracticePage({ params }: { params: { topicSlug: st
 
   if (!topic || topic.problems.length === 0) notFound()
 
+  // Shuffle problems randomly each session
+  const shuffled = [...topic.problems].sort(() => Math.random() - 0.5)
+
   // Serialize for client
-  const problems = topic.problems.map((p) => ({
+  const problems = shuffled.map((p) => ({
     id: p.id,
     difficulty: p.difficulty,
     questionLatex: p.questionLatex,

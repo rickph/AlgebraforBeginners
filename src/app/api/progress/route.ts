@@ -19,17 +19,22 @@ export async function POST(req: NextRequest) {
     },
   })
 
-  // Recalculate score from all attempts on this topic
-  const [total, correct] = await Promise.all([
-    prisma.attempt.count({
-      where: { userId: session.user.id, problem: { topicId } },
-    }),
-    prisma.attempt.count({
-      where: { userId: session.user.id, problem: { topicId }, isCorrect: true },
-    }),
-  ])
+  // Score = latest attempt per problem / total problems in topic
+  const topicProblems = await prisma.problem.findMany({
+    where: { topicId },
+    select: { id: true },
+  })
 
-  const scorePct = total > 0 ? (correct / total) * 100 : 0
+  let correctCount = 0
+  for (const problem of topicProblems) {
+    const latest = await prisma.attempt.findFirst({
+      where: { userId: session.user.id, problemId: problem.id },
+      orderBy: { createdAt: "desc" },
+    })
+    if (latest?.isCorrect) correctCount++
+  }
+
+  const scorePct = topicProblems.length > 0 ? (correctCount / topicProblems.length) * 100 : 0
   const status = scorePct >= 70 ? "mastered" : "in_progress"
 
   await prisma.userProgress.upsert({
